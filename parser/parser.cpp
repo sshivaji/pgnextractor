@@ -142,7 +142,7 @@ void error(Step* state, const char* data) {
         if (ToStep[i] == state)
         {
             std::string what = std::string(data, 50);
-            std::cerr << "Wrong " << stateDesc[i] << ": '"
+            std::cout << "Wrong " << stateDesc[i] << ": '"
                       << what << "' " << std::endl;
         }
     exit(0);
@@ -233,7 +233,7 @@ int get_result(const char* data) {
     return 3;
 }
 
-void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, Keys& kTable, std::ofstream& headerFile) {
+void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& headerFile) {
 
     Step* stateStack[16];
     Step**stateSp = stateStack;
@@ -242,7 +242,7 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, Keys& kTable, std
     char* end = curMove;
     size_t moveCnt = 0, gameCnt = 0, fixed = 0;
     uint64_t gameOfs = 0;
-    int result = 3;
+//    int result = 3;
     char* data = (char*)baseAddress;
     char* eof = data + size;
     int stm = WHITE;
@@ -354,9 +354,9 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, Keys& kTable, std
         case CASTLE_OR_RESULT:
             if (data[2] != '0')
             {
-                assert (result == 3);
+//                assert (result == 3);
 
-                result = get_result(data);
+//                result = get_result(data);
                 state = ToStep[RESULT];
                 continue;
             }
@@ -380,9 +380,9 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, Keys& kTable, std
             break;
 
         case START_RESULT:
-            assert (result == 3);
+//            assert (result == 3);
 
-            result = get_result(data);
+//            result = get_result(data);
             state = ToStep[RESULT];
             break;
 
@@ -400,7 +400,7 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, Keys& kTable, std
             headerFile << "}\n{";
 
             gameCnt++;
-            result = 3;
+//            result = 3;
             gameOfs = (data - (char*)baseAddress) + 1; // Beginning of next game
             end = curMove = moves;
             fenEnd = fen;
@@ -424,7 +424,7 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, Keys& kTable, std
             headerFile << "}\n{";
 
             gameCnt++;
-            result = 3;
+//            result = 3;
             gameOfs = (data - (char*)baseAddress); // Beginning of next game
             end = curMove = moves;
             fenEnd = fen;
@@ -660,19 +660,19 @@ void make_book(std::istringstream& is) {
     // the pgn file.
 //    kTable.reserve(2 * size / sizeof(PolyEntry));
 
-    std::cerr << "\nProcessing...";
+    std::cout << "\nProcessing...";
 
     TimePoint elapsed = now();
 
-    parse_pgn(baseAddress, size, stats, kTable, headerFile);
+    parse_pgn(baseAddress, size, stats, headerFile);
 
-    std::cerr << "\nWriting headers to " << headerFileName << "\n...";
+    std::cout << "\nWriting headers to " << headerFileName << "\n...";
 
     elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
 
     unmap(baseAddress, mapping);
 
-    std::cerr << "done\n";
+    std::cout << "done\n";
 
 //    std::sort(kTable.begin(), kTable.end());
 //
@@ -687,12 +687,12 @@ void make_book(std::istringstream& is) {
 //            uniqueKeys++;
 //        }
 
-//    std::cerr << "done\nWriting Polygot book...";
+//    std::cout << "done\nWriting Polygot book...";
 
 //
 //    size_t bookSize = write_poly_file(kTable, pgnFileName, full);
 
-    std::cerr << "done\n"
+    std::cout << "done\n"
               << "\nGames: " << stats.games
               << "\nMoves: " << stats.moves
               << "\nIncorrect moves: " << stats.fixed
