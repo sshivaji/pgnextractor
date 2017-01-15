@@ -27,6 +27,8 @@
 #include <string>
 #include <sstream>
 
+#include <sqlite3.h>
+
 #ifndef _WIN32
 #include <fcntl.h>
 #include <unistd.h>
@@ -233,7 +235,7 @@ int get_result(const char* data) {
     return 3;
 }
 
-void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& headerFile) {
+void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, sqlite3 *db) {
 
     Step* stateStack[16];
     Step**stateSp = stateStack;
@@ -250,7 +252,7 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& he
     int tag_offset = 1;
     std::string header;
     std::string value;
-    headerFile << "{";
+//    headerFile << "{";
 
     for (  ; data < eof; ++data)
     {
@@ -293,7 +295,7 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& he
                 value += c;
             }
 
-            headerFile << "\"" << header << "\":" << value << ", ";
+//            headerFile << "\"" << header << "\":" << value << ", ";
             header = "";
             value = "";
 
@@ -394,10 +396,10 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& he
             }
 //            parse_game(moves, end, kTable, fen, fenEnd, fixed, gameOfs, result);
 
-            headerFile << "\"offset\":" << gameOfs << ",\"offset_8\":"<< gameOfs*8;
+//            headerFile << "\"offset\":" << gameOfs << ", \"offset_8\":"<< gameOfs*8;
             // Remove last comma from JSON header
-//            headerFile.seekp(-2, headerFile.cur);
-            headerFile << "}\n{";
+            
+//            headerFile << "}\n{";
 
             gameCnt++;
 //            result = 3;
@@ -418,10 +420,10 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& he
         case MISSING_RESULT: // Missing result, next game already started
 //            parse_game(moves, end, kTable, fen, fenEnd, fixed, gameOfs, result);
 
-            headerFile << "\"offset\":" << gameOfs;
+//            headerFile << "\"offset\":" << gameOfs;
 
-            headerFile.seekp(-2, headerFile.cur);
-            headerFile << "}\n{";
+//            headerFile.seekp(-2, headerFile.cur);
+//            headerFile << "}\n{";
 
             gameCnt++;
 //            result = 3;
@@ -447,15 +449,15 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& he
     {
 //        parse_game(moves, end, kTable, fen, fenEnd, fixed, gameOfs, result);
 
-        headerFile << "\"offset\":" << gameOfs;
-        headerFile << "}\n{";
+//        headerFile << "\"offset\":" << gameOfs;
+//        headerFile << "}\n{";
 
         gameCnt++;
     }
 
     // Remove the last opening brace as there are no more games
-    headerFile.seekp(-2, headerFile.cur);
-    headerFile << "  ";
+//    headerFile.seekp(-2, headerFile.cur);
+//    headerFile << "  ";
 
     stats.games = gameCnt;
     stats.moves = moveCnt;
@@ -652,8 +654,24 @@ void make_book(std::istringstream& is) {
     size_t lastdot = pgnFileName.find_last_of(".");
     if (lastdot != std::string::npos)
         headerFileName = pgnFileName.substr(0, lastdot);
-    headerFileName += ".headers.json";
-    std::ofstream headerFile(headerFileName);
+    headerFileName += ".db";
+    
+    sqlite3 *db;
+    
+//    char *zErrMsg = 0;
+    int rc;
+
+    rc = sqlite3_open(headerFileName.c_str(), &db);
+   
+    if( rc ){
+      fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+//      return();
+    }
+    else{
+      fprintf(stderr, "Opened database successfully\n");
+    }
+    
+//    std::ofstream headerFile(headerFileName);
 
     // Reserve enough capacity according to file size. This is a very crude
     // estimation, mainly we assume key index to be of 2 times the size of
@@ -664,8 +682,10 @@ void make_book(std::istringstream& is) {
 
     TimePoint elapsed = now();
 
-    parse_pgn(baseAddress, size, stats, headerFile);
+    parse_pgn(baseAddress, size, stats, db);
 
+    sqlite3_close(db);
+    
     std::cout << "\nWriting headers to " << headerFileName << "\n...";
 
     elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
