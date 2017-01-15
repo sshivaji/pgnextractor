@@ -235,6 +235,15 @@ int get_result(const char* data) {
     return 3;
 }
 
+static int callback(void *NotUsed, int argc, char **argv, char **azColName){
+   int i;
+   for(i=0; i<argc; i++){
+      printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+   }
+   printf("\n");
+   return 0;
+}
+
 void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, sqlite3 *db) {
 
     Step* stateStack[16];
@@ -253,6 +262,41 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, sqlite3 *db) {
     std::string header;
     std::string value;
 //    headerFile << "{";
+    char *zErrMsg = 0;
+    int rc;
+    
+     /* Create SQL statement */
+   char* sql = "CREATE TABLE Game("  \
+         "OFFSET INT PRIMARY KEY     NOT NULL," \
+         "OFFSET_8 INT  INDEX NOT NULL," \
+
+         "WHITE          CHAR(100)    ," \
+         "WHITE_ELO      CHAR(100)     ," \
+         "BLACK          CHAR(100)    ," \
+         "BLACK_ELO      CHAR(100)     ," \
+         "RESULT         CHAR(10)    ," \
+         "DATE           CHAR(20)     ," \
+         "EVENT          CHAR(100)     ," \
+         "SITE           CHAR(50)     ," \
+         "ECO            CHAR(5));     " \
+         "CREATE INDEX white_idx on GAME(WHITE);" \
+         "CREATE INDEX black_idx on GAME(BLACK);" \
+         "CREATE INDEX white_elo_idx on GAME(WHITE_ELO);" \
+         "CREATE INDEX black_elo_idx on GAME(BLACK_ELO);" \
+         "CREATE INDEX result_idx on GAME(RESULT);" \
+         "CREATE INDEX date_idx on GAME(DATE);" \
+         "CREATE INDEX event_idx on GAME(EVENT);" \
+         "CREATE INDEX site_idx on GAME(SITE);" \
+         "CREATE INDEX eco_idx on GAME(ECO);";
+
+   /* Execute SQL statement */
+   rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+   if( rc != SQLITE_OK ){
+   fprintf(stderr, "SQL error: %s\n", zErrMsg);
+      sqlite3_free(zErrMsg);
+   }else{
+      fprintf(stdout, "Table created successfully\n");
+   }
 
     for (  ; data < eof; ++data)
     {
