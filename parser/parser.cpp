@@ -268,7 +268,7 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, sqlite3 *db) {
      /* Create SQL statement */
    char* sql = "CREATE TABLE Game("  \
          "OFFSET INT PRIMARY KEY     NOT NULL," \
-         "OFFSET_8 INT  INDEX NOT NULL," \
+         "OFFSET_8 INT  NOT NULL," \
 
          "WHITE          CHAR(100)    ," \
          "WHITE_ELO      CHAR(100)     ," \
