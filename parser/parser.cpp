@@ -302,13 +302,13 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& he
                 data += 5;
                 state = ToStep[FEN_TAG];
             }
-            else if (   *(data + 1) == 'V'
-                     && !strncmp(data+1, "Variant ", 8)
-                     &&  strncmp(data+9, "\"Standard\"", 10))
-            {
-                --stateSp; // Pop state, we are inside brackets
-                state = ToStep[SKIP_GAME];
-            }
+//            else if (   *(data + 1) == 'V'
+//                     && !strncmp(data+1, "Variant ", 8)
+//                     &&  strncmp(data+9, "\"Standard\"", 10))
+//            {
+//                --stateSp; // Pop state, we are inside brackets
+//                state = ToStep[SKIP_GAME];
+//            }
             else
                 state = ToStep[TAG];
             break;
