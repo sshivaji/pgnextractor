@@ -80,6 +80,20 @@ enum MetaType {
     MOVE_TOTAL, MOVE_WIN, MOVE_DRAW
 };
 
+const std::map<std::string, std::string> GameHeaderSQLiteMapping = {
+    {"white", "WHITE"}, 
+    {"whiteelo", "WHITE_ELO"},
+    {"black", "BLACK"}, 
+    {"blackelo", "BLACK_ELO"},
+    {"result", "RESULT"},
+    {"date", "DATE"},
+    {"event", "EVENT"}, 
+    {"site", "SITE"}, 
+    {"eco", "ECO"}
+};
+
+std::map<std::string, std::string> GameHeaderSQLiteMap = {};
+
 Token ToToken[256];
 Step ToStep[STATE_NB][TOKEN_NB];
 Position RootPos;
@@ -262,11 +276,12 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, sqlite3 *db) {
     std::string header;
     std::string value;
 //    headerFile << "{";
+    
     char *zErrMsg = 0;
     int rc;
     
-     /* Create SQL statement */
-   char* sql = "CREATE TABLE Game("  \
+    /* Create SQL statement */
+    char* sql = "CREATE TABLE Game("  \
          "OFFSET INT PRIMARY KEY     NOT NULL," \
          "OFFSET_8 INT  NOT NULL," \
 
@@ -289,14 +304,14 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, sqlite3 *db) {
          "CREATE INDEX site_idx on GAME(SITE);" \
          "CREATE INDEX eco_idx on GAME(ECO);";
 
-   /* Execute SQL statement */
-   rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-   if( rc != SQLITE_OK ){
-   fprintf(stderr, "SQL error: %s\n", zErrMsg);
+    /* Execute SQL statement */
+    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+    if( rc != SQLITE_OK ){
+      fprintf(stderr, "SQL error: %s\n", zErrMsg);
       sqlite3_free(zErrMsg);
-   }else{
+    } else {
       fprintf(stdout, "Table created successfully\n");
-   }
+    }
 
     for (  ; data < eof; ++data)
     {
@@ -338,10 +353,18 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, sqlite3 *db) {
                 tag_offset+=1;
                 value += c;
             }
-
-//            headerFile << "\"" << header << "\":" << value << ", ";
+            // HEADSERT
+            //            headerFile << "\"" << header << "\":" << value << ", ";
+            std::transform(header.begin(), header.end(), header.begin(), ::tolower);
+            GameHeaderSQLiteMap[header]=value;
+            
+//            std::cout <<" header: " << header << " value: "<< value;
+//            std::cout <<" db_column_header: " << GameHeaderSQLiteMap[header];
+            
+            
+            
             header = "";
-            value = "";
+            value  = "";
 
             if (*(data + 1) == 'F' && !strncmp(data+1, "FEN \"", 5))
             {
@@ -444,6 +467,37 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, sqlite3 *db) {
             // Remove last comma from JSON header
             
 //            headerFile << "}\n{";
+            
+//            "WHITE          CHAR(100)    ," \
+//            "WHITE_ELO      CHAR(100)     ," \
+//            "BLACK          CHAR(100)    ," \
+//            "BLACK_ELO      CHAR(100)     ," \
+//            "RESULT         CHAR(10)    ," \
+//            "DATE           CHAR(20)     ," \
+//            "EVENT          CHAR(100)     ," \
+//            "SITE           CHAR(50)     ," \
+//            "ECO            CHAR(5));     " \
+
+            std::string sqlString = "INSERT INTO Game VALUES ("+GameHeaderSQLiteMap["WHITE"]+","
+                    +GameHeaderSQLiteMap["WHITE_ELO"]+","+GameHeaderSQLiteMap["BLACK"]+","+GameHeaderSQLiteMap["BLACK_ELO"]+","
+                    +GameHeaderSQLiteMap["RESULT"]+","+GameHeaderSQLiteMap["DATE"]+","+GameHeaderSQLiteMap["EVENT"]+
+                    ","+GameHeaderSQLiteMap["SITE"]+","+GameHeaderSQLiteMap["ECO"]; 
+            
+            char *zErrMsg = 0;
+            int rc;
+            
+            /* Create SQL statement */
+            // char* sql = "";
+
+            /* Execute SQL statement */
+            rc = sqlite3_exec(db, sqlString.str().c_str(), callback, 0, &zErrMsg);
+            if( rc != SQLITE_OK ){
+              fprintf(stderr, "SQL error: %s\n", zErrMsg);
+              sqlite3_free(zErrMsg);
+            } else {
+              fprintf(stdout, "Table created successfully\n");
+            }
+            GameHeaderSQLiteMap.clear();
 
             gameCnt++;
 //            result = 3;
@@ -468,6 +522,8 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, sqlite3 *db) {
 
 //            headerFile.seekp(-2, headerFile.cur);
 //            headerFile << "}\n{";
+            GameHeaderSQLiteMap.clear();
+
 
             gameCnt++;
 //            result = 3;
@@ -495,6 +551,8 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, sqlite3 *db) {
 
 //        headerFile << "\"offset\":" << gameOfs;
 //        headerFile << "}\n{";
+        GameHeaderSQLiteMap.clear();
+
 
         gameCnt++;
     }
