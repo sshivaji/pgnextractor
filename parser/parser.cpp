@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <string>
@@ -233,6 +234,22 @@ int get_result(const char* data) {
     return 3;
 }
 
+std::string escape_json(const std::string &s) {
+    std::ostringstream o;
+    for (auto c = s.cbegin(); c != s.cend(); c++) {
+        switch (*c) {
+        case '\x00': o << "\\u0000"; break;
+        case '\x01': o << "\\u0001"; break;
+        case '\x0a': o << "\\n"; break;
+        case '\x1f': o << "\\u001f"; break;
+        case '\x22': o << "\\\""; break;
+        case '\x5c': o << "\\\\"; break;
+        default: o << *c;
+        }
+    }
+    return o.str();
+}
+
 void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& headerFile) {
 
     Step* stateStack[16];
@@ -283,19 +300,28 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& he
                 header += c;
             }
 
-            //             Move over to the result tag
-            //            tag_offset+=1;
+//                         Move over to the result tag
+            tag_offset+=1;
             // Get the result value from the tag
             while (*( data + tag_offset )!='\n')
             {
                 char c = *( data + tag_offset );
-                tag_offset+=1;
+                tag_offset += 1;
                 value += c;
             }
             // Remove characters after the last closing brace
             value.erase(value.rfind(']'));
 
-            headerFile << "\"" << header << "\":" << value << ", ";
+            // Remove first and last quote
+            value = value.substr(1, value.size() - 2);
+
+            // Check for embedded quotes or other chars that cause an invalid JSON to be output
+            if (value.find('"')!=std::string::npos || value.find('\\')!=std::string::npos) {
+//                std::cout << "value: " << value;
+                value = escape_json(value);
+            }
+
+            headerFile << "\"" << header << "\": \"" << value << "\", ";
             header = "";
             value = "";
 
