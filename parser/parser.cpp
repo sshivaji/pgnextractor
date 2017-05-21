@@ -286,12 +286,14 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& he
             //             Move over to the result tag
             //            tag_offset+=1;
             // Get the result value from the tag
-            while (*( data + tag_offset )!=']')
+            while (*( data + tag_offset )!='\n')
             {
                 char c = *( data + tag_offset );
                 tag_offset+=1;
                 value += c;
             }
+            // Remove characters after the last closing brace
+            value.erase(value.rfind(']'));
 
             headerFile << "\"" << header << "\":" << value << ", ";
             header = "";
