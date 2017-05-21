@@ -145,7 +145,7 @@ void error(Step* state, const char* data) {
             std::cout << "Wrong " << stateDesc[i] << ": '"
                       << what << "' " << std::endl;
         }
-    exit(0);
+    //exit(0);
 }
 
 
