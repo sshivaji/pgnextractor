@@ -310,8 +310,10 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& he
                 value += c;
             }
             // Remove characters after the last closing brace
-            value.erase(value.rfind(']'));
-
+            if (value.rfind(']')!=std::string::npos)
+                        {
+                    value.erase(value.rfind(']'));
+                }
             // Remove first and last quote
             value = value.substr(1, value.size() - 2);
 
