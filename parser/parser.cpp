@@ -252,11 +252,18 @@ std::string escape_json(const std::string &s) {
 
 void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& headerFile) {
 
-    Step* stateStack[16];
-    Step**stateSp = stateStack;
-    char fen[256], *fenEnd = fen;
-    char moves[1024 * 8], *curMove = moves;
+    // ChessFighter add-on: BSS buffers (not on stack) — avoids
+    // ___chkstk_darwin overflow on long annotated games.
+    static Step* stateStack[256];
+    Step** stateSp = stateStack;
+    static char fen[1024];
+    static char moves[1024 * 64];
+    char* fenEnd = fen;
+    char* curMove = moves;
+    const char* fenLimit   = fen + sizeof(fen) - 1;
+    const char* movesLimit = moves + sizeof(moves) - 1;
     char* end = curMove;
+    static int game_skips = 0;
     size_t moveCnt = 0, gameCnt = 0, fixed = 0;
     uint64_t gameOfs = 0;
 //    int result = 3;
@@ -276,7 +283,19 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& he
         switch (state[tk])
         {
         case FAIL:
-            error(state, data);
+            // ChessFighter add-on: lenient — skip game instead of exit(0).
+            if (++game_skips <= 3)
+            {
+                char what[41]; size_t n = (size_t)std::min((ptrdiff_t)40, eof - data);
+                std::memcpy(what, data, n); what[n] = 0;
+                std::cerr << "Skip bad game: '" << what << "...'" << std::endl;
+            }
+            else if (game_skips == 4)
+                std::cerr << "(further bad-game warnings suppressed)" << std::endl;
+            end = curMove = moves;
+            fenEnd = fen;
+            stateSp = stateStack;
+            state = ToStep[SKIP_GAME];
             break;
 
         case CONTINUE:
@@ -332,13 +351,21 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& he
                 data += 5;
                 state = ToStep[FEN_TAG];
             }
-//            else if (   *(data + 1) == 'V'
-//                     && !strncmp(data+1, "Variant ", 8)
-//                     &&  strncmp(data+9, "\"Standard\"", 10))
-//            {
-//                --stateSp; // Pop state, we are inside brackets
-//                state = ToStep[SKIP_GAME];
-//            }
+            // ChessFighter add-on: skip non-Standard variants outright.
+            else if (   *(data + 1) == 'V'
+                     && !strncmp(data+1, "Variant ", 8)
+                     &&  strncmp(data+9, "\"Standard\"", 10))
+            {
+                --stateSp;
+                state = ToStep[SKIP_GAME];
+            }
+            // ChessFighter add-on: [SetUp "1"] without [Variant ...] is
+            // usually a Chess960 / puzzle / endgame study — skip.
+            else if (*(data + 1) == 'S' && !strncmp(data+1, "SetUp \"1\"", 9))
+            {
+                --stateSp;
+                state = ToStep[SKIP_GAME];
+            }
             else
                 state = ToStep[TAG];
             break;
@@ -349,7 +376,8 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& he
             break;
 
         case READ_FEN:
-            *fenEnd++ = *data;
+            // ChessFighter add-on: bounds-check
+            if (fenEnd < fenLimit) *fenEnd++ = *data;
             break;
 
         case CLOSE_FEN_TAG:
@@ -393,16 +421,17 @@ void parse_pgn(void* baseAddress, uint64_t size, Stats& stats, std::ofstream& he
             /* Fall through */
 
         case START_READ_SAN:
-            *end++ = *data;
+            // ChessFighter add-on: bounds-check
+            if (end < movesLimit) *end++ = *data;
             state = ToStep[READ_SAN];
             break;
 
         case READ_MOVE_CHAR:
-            *end++ = *data;
+            if (end < movesLimit) *end++ = *data;
             break;
 
         case END_MOVE:
-            *end++ = 0; // Zero-terminating string
+            if (end < movesLimit) *end++ = 0; // Zero-terminating string
             curMove = end;
             moveCnt++;
             state = ToStep[stm == WHITE ? NEXT_SAN : NEXT_MOVE];

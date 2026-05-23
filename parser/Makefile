@@ -92,6 +92,15 @@ ifeq ($(ARCH),x86-64-bmi2)
 	pext = yes
 endif
 
+# ChessFighter add-on: macOS arm64
+ifeq ($(ARCH),apple-silicon)
+	arch = arm64
+	bits = 64
+	prefetch = no
+	popcnt = no
+	sse = no
+endif
+
 ifeq ($(ARCH),armv7)
 	arch = armv7
 	prefetch = yes
@@ -406,7 +415,8 @@ config-sanity:
 	@test "$(debug)" = "yes" || test "$(debug)" = "no"
 	@test "$(optimize)" = "yes" || test "$(optimize)" = "no"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
-	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "armv7"
+	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "armv7" || \
+	 test "$(arch)" = "arm64"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
